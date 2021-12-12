@@ -5,6 +5,7 @@
 
 int main(int argc, char *argv[]) {
     char *p;
+    unsigned int xor;
 
     //=================================================================================================================
     // Parsing and validating arguments
@@ -25,8 +26,9 @@ int main(int argc, char *argv[]) {
     }
 
     // setting up default arguments
-    long blockSize = 4;
-    long blockCount = 4;
+    long blockSize = 1024;
+    // blockCount -1 is an indicator to read the entire file
+    long blockCount = -1;
 
     // block size
     if (argc > 3) {
@@ -51,13 +53,14 @@ int main(int argc, char *argv[]) {
 
     switch (action) {
         case 'r':
-            readFile(fileName, blockSize, -1);
+            xor = readFile(fileName, blockSize, blockCount);
+            printf("xor: %08x\n", xor);
             break;
         case 'w':
             writeFile(fileName, blockSize, blockCount);
             break;
         default:
-            printf("action: %c, Code should NEVER reach here; if it did, there is a BUG!", action);
+            printf("action: %c, Code should NEVER reach here; if it did, there is a BUG!\n", action);
     }
 
     exit(0);

@@ -10,6 +10,20 @@
 #include <math.h>
 #include <time.h>
 
+// equivalent to 128 MiB
+const int MAX_POW2_FOR_BLOCK_SIZE_TESTING = 27;
+//const int MAX_POW2_FOR_BLOCK_SIZE_TESTING = 5;
+
+long * getTestBlockSizes(){
+    // since we want to start testing from block size = 4 bytes
+    static long test[26];
+//    static long test[4];
+    for (int i = 2; i <= MAX_POW2_FOR_BLOCK_SIZE_TESTING; i++){
+        test[i - 2] = (long) pow(2, i);
+    }
+    return test;
+}
+
 size_t getFileSize(char* fileName){
     int fd;
     size_t sz;
@@ -59,19 +73,19 @@ long computeReasonableBlockCount(char *fileName, long blockSize){
         }
         timeTaken = ceil((double) timeTaken / numIter);
 
-        printf("filename: %s, file_size: %ld, block_size: %ld, block_count(2**%d): %ld, wall time: %ld seconds\n",
-               fileName, fileSize, blockSize, i, currBc, timeTaken);
+//        printf("filename: %s, test_file_size: %ld, block_size: %ld, block_count(2**%d): %ld, wall time: %ld seconds\n",
+//               fileName, fileSize, blockSize, i, currBc, timeTaken);
 
-        // if time taken to read the current no. of block counts is >= 10 seconds, returning the
-        // previous read block count as answer (since it is reasonable i.e. fewer than 10 seconds)
-        if (timeTaken >= 10){
+        // if time taken to read the current no. of block counts is > 15 seconds, returning the
+        // previous read block count as answer (since it is reasonable i.e. <= 15 seconds)
+        if (timeTaken > 15){
             return test[i - 1];
         }
     }
 
     // if the code reaches till this point, that means none of the block counts (from 2^0 to 2^31)
-    // were read in 10 or more seconds; therefore, returning the maximum block count we are testing on
-    // i.e. n - 1 = 2^31
+    // were read in more than 15 seconds; therefore, returning the maximum block count we are testing on
+    // i.e. test[n - 1] = 2^31
     return test[n - 1];
 }
 
@@ -84,7 +98,7 @@ unsigned int calculateXor(const unsigned int *buffer, long len) {
     return result;
 }
 
-void readFile(char *fileName, long blockSize, long blockCount) {
+unsigned int readFile(char *fileName, long blockSize, long blockCount) {
     long n, totBytesRead, currBlockCount, bufTotLen, bufReadLen;
     int fd;
     unsigned int xor = 0;
@@ -124,6 +138,8 @@ void readFile(char *fileName, long blockSize, long blockCount) {
 
     // close file
     close(fd);
+
+    return xor;
 }
 
 void writeFile(char *fileName, long blockSize, long blockCount) {

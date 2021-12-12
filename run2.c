@@ -34,7 +34,7 @@ int main(int argc, char *argv[]) {
     blockCount = computeReasonableBlockCount(fileName, blockSize);
     fileSize = blockCount * blockSize;
 
-    printf("For given block_size: %ld, Reasonable block_count (file_size): %ld (%ld)\n", blockSize,
+    printf("For block_size: %ld bytes, Reasonable block_count (file_size): %ld (%ld bytes)\n", blockSize,
            blockCount, fileSize);
 
     exit(0);
