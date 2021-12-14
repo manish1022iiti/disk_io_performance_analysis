@@ -14,6 +14,13 @@
 const int MAX_POW2_FOR_BLOCK_SIZE_TESTING = 27;
 //const int MAX_POW2_FOR_BLOCK_SIZE_TESTING = 5;
 
+// number of iterations to do while computing average read time
+const int NUM_ITER_TO_COMPUTE_AVG_READ_TIME = 5;
+
+// max reasonable time (in seconds)
+const int MAX_REASONABLE_TIME = 8;
+//const int MAX_REASONABLE_TIME = 5;
+
 long * getTestBlockSizes(){
     // since we want to start testing from block size = 4 bytes
     static long test[26];
@@ -47,7 +54,7 @@ void getTestBlockCounts(long *arr, int n){
 
 long computeReasonableBlockCount(char *fileName, long blockSize){
     int n = 32;
-    int numIter = 5;
+    int numIter = NUM_ITER_TO_COMPUTE_AVG_READ_TIME;
     long currBc, test[n];
     time_t begin, end, timeTaken;
     size_t fileSize = getFileSize(fileName);
@@ -61,7 +68,7 @@ long computeReasonableBlockCount(char *fileName, long blockSize){
 
         // If the file is NOT large enough (i.e >= blockSize * blockCount), no point in continuing
         if (currBc * blockSize > fileSize)
-            break;
+            return test[i - 1];
 
         // reading given block counts of the file "numIter" times to compute average time to read
         timeTaken = 0;
@@ -73,12 +80,12 @@ long computeReasonableBlockCount(char *fileName, long blockSize){
         }
         timeTaken = ceil((double) timeTaken / numIter);
 
-//        printf("filename: %s, test_file_size: %ld, block_size: %ld, block_count(2**%d): %ld, wall time: %ld seconds\n",
+//        printf("filename: %s, test_file_size: %ld B, block_size: %ld, block_count(2**%d): %ld, wall time: %ld seconds\n",
 //               fileName, fileSize, blockSize, i, currBc, timeTaken);
 
         // if time taken to read the current no. of block counts is > 15 seconds, returning the
         // previous read block count as answer (since it is reasonable i.e. <= 15 seconds)
-        if (timeTaken > 15){
+        if (timeTaken > MAX_REASONABLE_TIME){
             return test[i - 1];
         }
     }
