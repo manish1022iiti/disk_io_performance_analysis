@@ -15,5 +15,8 @@ long computeReasonableBlockCount(char *fileName, long blockSize);
 size_t getFileSize(char *fileName);
 long * getTestBlockSizes();
 const int MAX_POW2_FOR_BLOCK_SIZE_TESTING;
+const int MAX_POW2_FOR_TEST_BLOCK_COUNTS;
+const int NUM_ITER_TO_COMPUTE_AVG_READ_TIME;
+void lseekFile(char *fileName, long numIter);
 
 #endif //DISK_IO_PERFORMANCE_ANALYSIS_UTILS_H
