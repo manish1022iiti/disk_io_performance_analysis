@@ -10,6 +10,10 @@
 #include <math.h>
 #include <time.h>
 
+// while finding the right blockCount for any experiment, we want to stop when blockCount hits 2^32
+// i.e. we will try to find the right blockCount ONLY till <= 2^31 blocks
+const int MAX_POW2_FOR_TEST_BLOCK_COUNTS = 32;
+
 // equivalent to 128 MiB
 const int MAX_POW2_FOR_BLOCK_SIZE_TESTING = 27;
 //const int MAX_POW2_FOR_BLOCK_SIZE_TESTING = 5;
@@ -53,7 +57,7 @@ void getTestBlockCounts(long *arr, int n){
 }
 
 long computeReasonableBlockCount(char *fileName, long blockSize){
-    int n = 32;
+    int n = MAX_POW2_FOR_TEST_BLOCK_COUNTS;
     int numIter = NUM_ITER_TO_COMPUTE_AVG_READ_TIME;
     long currBc, test[n];
     time_t begin, end, timeTaken;
@@ -67,8 +71,11 @@ long computeReasonableBlockCount(char *fileName, long blockSize){
         currBc = test[i];
 
         // If the file is NOT large enough (i.e >= blockSize * blockCount), no point in continuing
-        if (currBc * blockSize > fileSize)
-            return test[i - 1];
+        if (currBc * blockSize > fileSize){
+            printf("Bummer! File Size: %ld is < currBc * blockSize: %ld * %ld. Get a larger"
+                   " file please.\n", fileSize, currBc, blockSize);
+            exit(0);
+        }
 
         // reading given block counts of the file "numIter" times to compute average time to read
         timeTaken = 0;
@@ -91,8 +98,8 @@ long computeReasonableBlockCount(char *fileName, long blockSize){
     }
 
     // if the code reaches till this point, that means none of the block counts (from 2^0 to 2^31)
-    // were read in more than 15 seconds; therefore, returning the maximum block count we are testing on
-    // i.e. test[n - 1] = 2^31
+    // were read in more than MAX_REASONABLE_TIME; therefore, returning the maximum block count we are
+    // testing on i.e. test[n - 1] = 2^31
     return test[n - 1];
 }
 
@@ -103,6 +110,33 @@ unsigned int calculateXor(const unsigned int *buffer, long len) {
         result ^= buffer[i];
     }
     return result;
+}
+
+void lseekFile(char *fileName, long numIter) {
+    int fd;
+    long ret;
+
+    // open file
+    if ((fd = open(fileName, O_RDONLY)) < 0) {
+        printf("Can not open file: %s\n", fileName);
+        exit(0);
+    }
+
+    // lseek file
+    for(int i = 0; i < numIter; i++){
+        // just always move the pointer to the same position (4 bytes left to the EOF)
+        ret = lseek(fd, 4, SEEK_END);
+
+//        printf("%d: lseek(%s, 4, SEEK_END) = %ld\n", i, fileName, ret);
+
+        if(ret == -1){
+            printf("Bummer! Couldn't 'lseek' 4 bytes (SEEK_END) for file: %s\n", fileName);
+            exit(0);
+        }
+    }
+
+    // close file
+    close(fd);
 }
 
 unsigned int readFile(char *fileName, long blockSize, long blockCount) {
