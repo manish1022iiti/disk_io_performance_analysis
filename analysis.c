@@ -40,6 +40,7 @@ void analyzeOneByteReadPerformance(char *fileName){
            "rtest4(B/s),ltest4(B/s),rtest4(MiB/s),ltest4(MiB/s),"
            "rtest5(B/s),ltest5(B/s),rtest5(MiB/s),ltest5(MiB/s),\n");
     for(int i = 0; i < n; i++){
+//    for(int i = 0; i < 28; i++){
         currBc = test[i];
 
         // If the file is NOT large enough (i.e >= blockSize * blockCount), no point in continuing
