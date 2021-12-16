@@ -9,6 +9,7 @@
 #include <fcntl.h>
 #include <math.h>
 #include <time.h>
+#include <pthread.h>
 
 // while finding the right blockCount for any experiment, we want to stop when blockCount hits 2^32
 // i.e. we will try to find the right blockCount ONLY till <= 2^31 blocks
@@ -24,6 +25,13 @@ const int NUM_ITER_TO_COMPUTE_AVG_READ_TIME = 5;
 // max reasonable time (in seconds)
 const int MAX_REASONABLE_TIME = 8;
 //const int MAX_REASONABLE_TIME = 5;
+
+struct readBlockStruct {
+    int fd;
+    long startPos;
+    long blockCount;
+    long blockSize;
+};
 
 long * getTestBlockSizes(){
     // since we want to start testing from block size = 4 bytes
@@ -137,6 +145,138 @@ void lseekFile(char *fileName, long numIter) {
 
     // close file
     close(fd);
+}
+
+long getOptimalBlockSize(long fileSize){
+    // x MiB
+    long blockSize = 4 * 1024 * 1024;
+
+    // if file size is <= x MiB, we will just read it with 4 byte block size
+    // else we will use x MiB block size
+    if (fileSize <= blockSize){
+        return 4;
+    }
+    return blockSize;
+}
+
+void * readBlocks(void * args){
+    struct readBlockStruct *arguments = (struct readBlockStruct *)args;
+    int fd;
+    long n, blockSize, blockCount, startPos, totBytesRead, currBlockCount, bufTotLen, bufReadLen;
+    long offset;
+
+    fd = arguments->fd;
+    blockSize = arguments->blockSize;
+    blockCount = arguments->blockCount;
+    startPos = arguments->startPos;
+    unsigned int xor = 0;
+
+    // allocating buffer space
+    bufTotLen = ceil((double) blockSize / sizeof(unsigned int));
+    unsigned int *buf = malloc(bufTotLen * sizeof(unsigned int));
+
+    // read file
+    totBytesRead = 0;
+    currBlockCount = 1;
+    offset = startPos;
+    while ((n = pread(fd, buf, blockSize, offset)) > 0) {
+        totBytesRead += n;
+        bufReadLen = ceil((double ) n / sizeof(unsigned int));
+
+//        printf("Start Pos: %ld, Block Count: %ld, Block Size: %ld, Bytes Read (current): %ld, Bytes Read (total):"
+//               "%ld, bufTotLen: %ld, bufReadLen: %ld\n", startPos, currBlockCount, blockSize, n,
+//               totBytesRead, bufTotLen, bufReadLen);
+
+        xor = xor ^ calculateXor(buf, bufReadLen);
+
+        if (currBlockCount == blockCount)
+            break;
+
+        currBlockCount += 1;
+        offset += n;
+    }
+
+//    printf("startPos: %ld, blockCount: %ld, blockSize: %ld, xor: %08x\n", startPos, blockCount,
+//           blockSize, xor);
+
+    pthread_exit((void *)xor);
+}
+
+unsigned int readFileFast(char *fileName, size_t fileSize, long blockSize, int threadCount) {
+    long blockCount, threadBlockCount, remainingBlockCount, currFileIdx;
+    int fd;
+    pthread_t *threads;
+    unsigned int txor, xor = 0;
+
+    // get the optimal blockSize for the given fileSize (if the user input blockSize is < 0)
+    if (blockSize < 0){
+        blockSize = getOptimalBlockSize((long) fileSize);
+    }
+
+    // blockCount
+    blockCount = ceil((double)fileSize / (double)blockSize);
+
+//    printf("fileSize: %ld, blockSize: %ld, blockCount: %ld\n", fileSize, blockSize, blockCount);
+
+    // initializing number of threads (if the user input blockSize is < 0)
+    if (threadCount < 0){
+        threadCount = 8;
+    }
+
+    // if blockCount is NOT >= a certain threshold, better to read the file sequentially
+    if (blockCount < 2 * threadCount){
+        return readFile(fileName, blockSize, blockCount);
+    }
+
+    // initializing threads
+    threads = (pthread_t *) malloc(sizeof(pthread_t) * threadCount);
+
+    // open file
+    if ((fd = open(fileName, O_RDONLY)) < 0) {
+        printf("Can not open file: %s\n", fileName);
+        exit(0);
+    }
+
+    // read file
+    struct readBlockStruct args[threadCount];
+    threadBlockCount = floor((double) blockCount / threadCount);
+    remainingBlockCount = blockCount;
+    currFileIdx = 0;
+    for (int i = 0; i < threadCount; i++){
+        // setting up args
+        args[i].fd = fd;
+        if (i == threadCount - 1){
+            args[i].blockCount = remainingBlockCount;
+            remainingBlockCount = 0;
+        }
+        else{
+            args[i].blockCount = threadBlockCount;
+            remainingBlockCount -= threadBlockCount;
+        }
+        args[i].startPos = currFileIdx;
+        args[i].blockSize = blockSize;
+
+//        printf("thread %d: startPos: %ld, blockCount: %ld, blockSize: %ld\n", i, args[i].startPos,
+//               args[i].blockCount, args[i].blockSize);
+
+        // launching thread
+        pthread_create(&threads[i], NULL, (void *(*)(void *)) readBlocks, (void*)&args[i]);
+
+        // resetting index for next thread
+        currFileIdx += args[i].blockCount * blockSize;
+    }
+
+    // collecting results of all threads
+    for (int i = 0; i < threadCount; i++){
+        pthread_join(threads[i], (void *)&txor);
+        xor ^= txor;
+    }
+//    printf("xor: %08x\n", xor);
+
+    // close file
+    close(fd);
+
+    return xor;
 }
 
 unsigned int readFile(char *fileName, long blockSize, long blockCount) {

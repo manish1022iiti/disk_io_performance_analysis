@@ -29,7 +29,8 @@ int main(int argc, char *argv[]) {
         exit(0);
     }
 
-    printf("fileName: %s, blockSize: %ld\n", fileName, blockSize);
+    printf("fileName: %s, blockSize: %ld. Thinking (it will think for a while(~3 min). We run multiple"
+           " experiments to find the right count)...\n", fileName, blockSize);
 
     blockCount = computeReasonableBlockCount(fileName, blockSize);
     fileSize = blockCount * blockSize;

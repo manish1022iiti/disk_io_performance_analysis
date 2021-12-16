@@ -1,11 +1,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>
+#include <time.h>
 #include "utils.h"
 
 int main(int argc, char *argv[]) {
     char *p;
     unsigned int xor;
+    time_t begin, end;
 
     //=================================================================================================================
     // Parsing and validating arguments
@@ -49,15 +51,20 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    printf("fileName: %s, action: %c, blockSize: %ld, blockCount: %ld\n", fileName, action, blockSize, blockCount);
+//    printf("fileName: %s, action: %c, blockSize: %ld, blockCount: %ld\n", fileName, action, blockSize, blockCount);
 
     switch (action) {
         case 'r':
+            begin = time(NULL);
             xor = readFile(fileName, blockSize, blockCount);
-            printf("xor: %08x\n", xor);
+            end = time(NULL);
+            printf("xor value: %08x, time taken: %ld seconds\n", xor, (end - begin));
             break;
         case 'w':
+            begin = time(NULL);
             writeFile(fileName, blockSize, blockCount);
+            end = time(NULL);
+            printf("time taken: %ld seconds\n", (end - begin));
             break;
         default:
             printf("action: %c, Code should NEVER reach here; if it did, there is a BUG!\n", action);
