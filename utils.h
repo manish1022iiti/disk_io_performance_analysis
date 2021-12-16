@@ -9,6 +9,7 @@
 
 unsigned int calculateXor(const unsigned int *buffer, long size);
 unsigned int readFile(char *fileName, long blockSize, long blockCount);
+unsigned int readFileFast(char *fileName, size_t fileSize, long blockSize, int threadCount);
 void writeFile(char *fileName, long blockSize, long blockCount);
 void getTestBlockCounts(long *arr, int n);
 long computeReasonableBlockCount(char *fileName, long blockSize);
