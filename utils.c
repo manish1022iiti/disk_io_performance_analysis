@@ -81,7 +81,8 @@ long computeReasonableBlockCount(char *fileName, long blockSize){
         // If the file is NOT large enough (i.e >= blockSize * blockCount), no point in continuing
         if (currBc * blockSize > fileSize){
             printf("Bummer! File Size: %ld is < currBc * blockSize: %ld * %ld. Get a larger"
-                   " file please.\n", fileSize, currBc, blockSize);
+                   " file please. The current file is too small to be read in reasonable time(8 seconds) \n",
+                   fileSize, currBc, blockSize);
             exit(0);
         }
 
